@@ -1,4 +1,4 @@
-import type { Booking, Room, User } from '../domain/types.js';
+import type { Booking, Room, User, WaitlistEntry } from '../domain/types.js';
 
 export interface RoomRepository {
   findAll(): Promise<Room[]>;
@@ -14,6 +14,16 @@ export interface BookingRepository {
   findById(id: string): Promise<Booking | undefined>;
   save(booking: Booking): Promise<void>;
   /** Renvoie false si la réservation n'existe pas. */
+  delete(id: string): Promise<boolean>;
+}
+
+export interface WaitlistRepository {
+  /** Dans l'ordre d'insertion. */
+  findByRoom(roomId: string): Promise<WaitlistEntry[]>;
+  findByOwner(ownerId: string): Promise<WaitlistEntry[]>;
+  findById(id: string): Promise<WaitlistEntry | undefined>;
+  save(entry: WaitlistEntry): Promise<void>;
+  /** Renvoie false si l'entrée n'existe pas. */
   delete(id: string): Promise<boolean>;
 }
 

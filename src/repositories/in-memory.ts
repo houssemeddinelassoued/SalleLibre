@@ -1,9 +1,10 @@
-import type { Booking, Room } from '../domain/types.js';
+import type { Booking, Room, WaitlistEntry } from '../domain/types.js';
 import type {
   BookingRepository,
   RoomRepository,
   StoredUser,
   UserRepository,
+  WaitlistRepository,
 } from './interfaces.js';
 
 export class InMemoryRoomRepository implements RoomRepository {
@@ -47,6 +48,30 @@ export class InMemoryBookingRepository implements BookingRepository {
 
   async delete(id: string): Promise<boolean> {
     return this.bookings.delete(id);
+  }
+}
+
+export class InMemoryWaitlistRepository implements WaitlistRepository {
+  private readonly entries = new Map<string, WaitlistEntry>();
+
+  async findByRoom(roomId: string): Promise<WaitlistEntry[]> {
+    return [...this.entries.values()].filter((e) => e.roomId === roomId);
+  }
+
+  async findByOwner(ownerId: string): Promise<WaitlistEntry[]> {
+    return [...this.entries.values()].filter((e) => e.ownerId === ownerId);
+  }
+
+  async findById(id: string): Promise<WaitlistEntry | undefined> {
+    return this.entries.get(id);
+  }
+
+  async save(entry: WaitlistEntry): Promise<void> {
+    this.entries.set(entry.id, entry);
+  }
+
+  async delete(id: string): Promise<boolean> {
+    return this.entries.delete(id);
   }
 }
 
