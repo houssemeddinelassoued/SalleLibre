@@ -1,0 +1,269 @@
+openapi: 3.0.3
+info:
+  title: SalleLibre API
+  description: API REST fictive de réservation de salles (persistance en mémoire).
+  version: 1.0.0
+servers:
+  - url: /api
+tags:
+  - name: Auth
+  - name: Salles
+  - name: Réservations
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Créer un compte membre
+      description: Le rôle est toujours `membre`, quel que soit le corps envoyé.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Credentials' }
+      responses:
+        '201':
+          description: Compte créé
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Obtenir un jeton JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Credentials' }
+      responses:
+        '200':
+          description: "Jeton à envoyer dans l'en-tête Authorization (Bearer)"
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token]
+                properties:
+                  token: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /rooms:
+    get:
+      tags: [Salles]
+      summary: Lister les salles
+      responses:
+        '200':
+          description: Liste des salles
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Room' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Salles]
+      summary: Créer une salle (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoomInput' }
+      responses:
+        '201':
+          description: Salle créée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Room' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /rooms/available:
+    get:
+      tags: [Salles]
+      summary: Salles libres sur un créneau
+      description: "Créneau [start, end[ (fin exclue). Tri par capacité croissante."
+      parameters:
+        - { name: start, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: end, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: minCapacity, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        '200':
+          description: Salles libres
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Room' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /rooms/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Salles]
+      summary: Modifier une salle (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoomInput' }
+      responses:
+        '200':
+          description: Salle modifiée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Room' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Salles]
+      summary: Supprimer une salle (admin)
+      responses:
+        '204': { description: Salle supprimée }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /bookings:
+    post:
+      tags: [Réservations]
+      summary: Réserver une salle
+      description: Créneau [start, end[ non passé. 409 si la salle est déjà prise sur le créneau.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookingInput' }
+      responses:
+        '201':
+          description: Réservation créée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Booking' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /bookings/mine:
+    get:
+      tags: [Réservations]
+      summary: Mes réservations
+      responses:
+        '200':
+          description: Réservations de l'utilisateur connecté
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Booking' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /bookings/{id}:
+    delete:
+      tags: [Réservations]
+      summary: Annuler une réservation (libérer la salle)
+      description: Réservé au propriétaire ou à un admin.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Réservation annulée }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+        details: {}
+    Credentials:
+      type: object
+      required: [name, password]
+      properties:
+        name: { type: string, minLength: 1 }
+        password: { type: string, minLength: 8 }
+    User:
+      type: object
+      required: [id, name, role]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        role: { type: string, enum: [membre, admin] }
+    RoomInput:
+      type: object
+      required: [name, capacity]
+      properties:
+        name: { type: string, minLength: 1 }
+        capacity: { type: integer, minimum: 1 }
+        equipment: { type: array, items: { type: string } }
+    Room:
+      allOf:
+        - $ref: '#/components/schemas/RoomInput'
+        - type: object
+          required: [id, equipment]
+          properties:
+            id: { type: string }
+    BookingInput:
+      type: object
+      required: [roomId, start, end, subject]
+      properties:
+        roomId: { type: string }
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+        subject: { type: string, minLength: 1 }
+    Booking:
+      allOf:
+        - $ref: '#/components/schemas/BookingInput'
+        - type: object
+          required: [id, ownerId]
+          properties:
+            id: { type: string }
+            ownerId: { type: string }
+  responses:
+    ValidationError:
+      description: Entrée invalide
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Jeton absent, invalide ou expiré
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Rôle insuffisant ou réservation d'un autre utilisateur
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Conflit (créneau déjà réservé, nom déjà pris)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

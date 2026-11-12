@@ -43,4 +43,10 @@ describe('findAvailableRooms', () => {
     findAvailableRooms(rooms, [], slot(h(10), h(11)), 1);
     expect(rooms.map((r) => r.name)).toEqual(copie);
   });
+
+  it('à capacité égale, trie par nom (ordre stable)', () => {
+    const egales = [room('z', 'Zéphyr', 8), room('y', 'Azur', 8), room('x', 'Mistral', 8)];
+    const noms = findAvailableRooms(egales, [], slot(h(10), h(11)), 1).map((r) => r.name);
+    expect(noms).toEqual(['Azur', 'Mistral', 'Zéphyr']);
+  });
 });
