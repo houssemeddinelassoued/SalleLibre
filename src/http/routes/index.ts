@@ -10,11 +10,13 @@ import {
   bookingBodySchema,
   credentialsSchema,
   idParamsSchema,
+  recurringBookingSchema,
   roomBodySchema,
   type AvailabilityQuery,
   type BookingBody,
   type Credentials,
   type IdParams,
+  type RecurringBookingBody,
   type RoomBody,
 } from '../schemas/index.js';
 
@@ -91,6 +93,19 @@ export function buildRouter({ auth, rooms, bookings }: Services): Router {
   router.post('/bookings', validate('body', bookingBodySchema), async (_req, res) => {
     const { roomId, start, end, subject } = res.locals.body as BookingBody;
     res.status(201).json(await bookings.book(currentUser(res), roomId, { start, end }, subject));
+  });
+
+  router.post('/bookings/recurring', validate('body', recurringBookingSchema), async (_req, res) => {
+    const body = res.locals.body as RecurringBookingBody;
+    const created = await bookings.bookWeekly(
+      currentUser(res),
+      body.roomId,
+      { start: body.start, end: body.end },
+      body.untilDay,
+      body.exceptions,
+      body.subject,
+    );
+    res.status(201).json(created);
   });
 
   router.get('/bookings/mine', async (_req, res) => {

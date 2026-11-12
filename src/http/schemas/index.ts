@@ -33,6 +33,20 @@ export const bookingBodySchema = z
   })
   .refine((b) => b.start < b.end, { message: 'start doit précéder end', path: ['end'] });
 
+const jourIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format attendu : AAAA-MM-JJ');
+
+export const recurringBookingSchema = z
+  .object({
+    roomId: z.string().min(1),
+    start: isoDate,
+    end: isoDate,
+    untilDay: jourIso,
+    exceptions: z.array(jourIso).max(26),
+    subject: z.string().trim().min(1).max(200),
+  })
+  .refine((b) => b.start < b.end, { message: 'start doit précéder end', path: ['end'] });
+
+export type RecurringBookingBody = z.infer<typeof recurringBookingSchema>;
 export type Credentials = z.infer<typeof credentialsSchema>;
 export type RoomBody = z.infer<typeof roomBodySchema>;
 export type IdParams = z.infer<typeof idParamsSchema>;

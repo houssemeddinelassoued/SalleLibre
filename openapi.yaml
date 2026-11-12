@@ -158,6 +158,34 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  /bookings/recurring:
+    post:
+      tags: [Réservations]
+      summary: Réserver chaque semaine (série hebdomadaire, tout ou rien)
+      description: >
+        Une réservation par semaine, au même jour et à la même heure que `start`,
+        jusqu'à `untilDay` inclus (AAAA-MM-JJ), en sautant les dates `exceptions`.
+        Au plus 26 occurrences. Si une seule occurrence est prise (409), aucune
+        réservation n'est créée. Exemple : mardi 10h–11h, jusqu'au 1er décembre 2026,
+        sauf le 24 novembre.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecurringBookingInput' }
+      responses:
+        '201':
+          description: Une réservation par occurrence créée
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Booking' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
   /bookings/mine:
     get:
       tags: [Réservations]
@@ -233,6 +261,20 @@ components:
         start: { type: string, format: date-time }
         end: { type: string, format: date-time }
         subject: { type: string, minLength: 1 }
+    RecurringBookingInput:
+      type: object
+      required: [roomId, start, end, untilDay, subject]
+      properties:
+        roomId: { type: string }
+        start: { type: string, format: date-time, description: Premier créneau, début inclus }
+        end: { type: string, format: date-time, description: Premier créneau, fin exclue }
+        untilDay: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$', description: Dernier jour inclus, AAAA-MM-JJ, example: '2026-12-01' }
+        exceptions:
+          type: array
+          maxItems: 26
+          items: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+          description: Dates AAAA-MM-JJ à sauter
+        subject: { type: string, minLength: 1, maxLength: 200 }
     Booking:
       allOf:
         - $ref: '#/components/schemas/BookingInput'
