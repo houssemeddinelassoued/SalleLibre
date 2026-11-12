@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import { TooManyRequestsError, UnauthorizedError } from '../../errors/index.js';
 import type { AuthService } from '../../services/auth-service.js';
 import type { BookingService } from '../../services/booking-service.js';
 import type { RoomService } from '../../services/room-service.js';
+import { FailureLimiter } from '../login-limiter.js';
 import { authenticate, currentUser, requireRole, validate } from '../middlewares/index.js';
 import {
   availabilityQuerySchema,
@@ -31,9 +33,21 @@ export function buildRouter({ auth, rooms, bookings }: Services): Router {
     res.status(201).json(await auth.register(name, password, 'membre'));
   });
 
-  router.post('/auth/login', validate('body', credentialsSchema), async (_req, res) => {
+  // F2 : après 5 échecs pour un même couple IP + nom, 429 pendant 15 minutes.
+  const limiter = new FailureLimiter({ maxFailures: 5, windowMs: 15 * 60 * 1000 });
+
+  router.post('/auth/login', validate('body', credentialsSchema), async (req, res) => {
     const { name, password } = res.locals.body as Credentials;
-    res.json({ token: await auth.login(name, password) });
+    const key = `${req.ip}|${name}`;
+    if (limiter.isBlocked(key)) throw new TooManyRequestsError();
+    try {
+      const token = await auth.login(name, password);
+      limiter.reset(key);
+      res.json({ token });
+    } catch (err) {
+      if (err instanceof UnauthorizedError) limiter.recordFailure(key);
+      throw err;
+    }
   });
 
   // Tout le reste exige un jeton.
