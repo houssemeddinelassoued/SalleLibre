@@ -8,6 +8,7 @@ import {
   ValidationError,
 } from '../errors/index.js';
 import type { BookingRepository, RoomRepository } from '../repositories/interfaces.js';
+import { assertSlotOrder } from './slot-guard.js';
 
 export class BookingService {
   constructor(
@@ -18,7 +19,7 @@ export class BookingService {
   ) {}
 
   async book(user: User, roomId: string, slot: Slot, subject: string): Promise<Booking> {
-    if (slot.start >= slot.end) throw new ValidationError('Le début doit précéder la fin');
+    assertSlotOrder(slot);
     if (slot.start < this.now()) throw new ValidationError('Le créneau est dans le passé');
     if (subject.trim() === '') throw new ValidationError('Le sujet est requis');
     if (!(await this.rooms.findById(roomId))) throw new NotFoundError('Salle introuvable');

@@ -3,6 +3,7 @@ import { findAvailableRooms } from '../domain/availability.js';
 import type { Room, Slot, User } from '../domain/types.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../errors/index.js';
 import type { BookingRepository, RoomRepository } from '../repositories/interfaces.js';
+import { assertSlotOrder } from './slot-guard.js';
 
 export interface RoomInput {
   readonly name: string;
@@ -63,7 +64,7 @@ export class RoomService {
   }
 
   async findAvailable(slot: Slot, minCapacity = 1): Promise<Room[]> {
-    if (slot.start >= slot.end) throw new ValidationError('Le début doit précéder la fin');
+    assertSlotOrder(slot);
     const rooms = await this.rooms.findAll();
     const bookings = (
       await Promise.all(rooms.map((r) => this.bookings.findByRoom(r.id)))
