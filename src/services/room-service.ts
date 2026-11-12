@@ -21,6 +21,15 @@ function assertValid(input: RoomInput): void {
   }
 }
 
+function toRoom(id: string, input: RoomInput): Room {
+  return {
+    id,
+    name: input.name,
+    capacity: input.capacity,
+    equipment: input.equipment ?? [],
+  };
+}
+
 export class RoomService {
   constructor(
     private readonly rooms: RoomRepository,
@@ -34,12 +43,7 @@ export class RoomService {
   async create(actor: User, input: RoomInput): Promise<Room> {
     assertAdmin(actor);
     assertValid(input);
-    const room: Room = {
-      id: randomUUID(),
-      name: input.name,
-      capacity: input.capacity,
-      equipment: input.equipment ?? [],
-    };
+    const room = toRoom(randomUUID(), input);
     await this.rooms.save(room);
     return room;
   }
@@ -48,12 +52,7 @@ export class RoomService {
     assertAdmin(actor);
     assertValid(input);
     if (!(await this.rooms.findById(id))) throw new NotFoundError('Salle introuvable');
-    const room: Room = {
-      id,
-      name: input.name,
-      capacity: input.capacity,
-      equipment: input.equipment ?? [],
-    };
+    const room = toRoom(id, input);
     await this.rooms.save(room);
     return room;
   }
