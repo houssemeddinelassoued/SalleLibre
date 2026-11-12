@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { MAX_OCCURRENCES, SEMAINE_MS, expandWeekly } from '../domain/recurrence.js';
 import { overlaps } from '../domain/overlap.js';
 import type { Booking, Slot, User } from '../domain/types.js';
 import {
@@ -43,6 +44,55 @@ export class BookingService {
       };
       await this.bookings.save(booking);
       return booking;
+    });
+  }
+
+  /**
+   * Réservation hebdomadaire : une occurrence par semaine, du créneau `first`
+   * jusqu'au jour `untilDay` inclus, en sautant les dates `exceptions`.
+   * Tout ou rien : si une seule occurrence est en conflit, rien n'est écrit.
+   */
+  async bookWeekly(
+    user: User,
+    roomId: string,
+    first: Slot,
+    untilDay: string,
+    exceptions: readonly string[],
+    subject: string,
+  ): Promise<Booking[]> {
+    assertSlotOrder(first);
+    if (first.end.getTime() - first.start.getTime() > SEMAINE_MS) {
+      throw new ValidationError('La durée d’un créneau récurrent ne peut pas dépasser une semaine');
+    }
+    if (subject.trim() === '') throw new ValidationError('Le sujet est requis');
+    if (!(await this.rooms.findById(roomId))) throw new NotFoundError('Salle introuvable');
+
+    const occurrences = expandWeekly(first, untilDay, exceptions, MAX_OCCURRENCES + 1);
+    if (occurrences.length === 0) throw new ValidationError('Aucune occurrence sur cette période');
+    if (occurrences.length > MAX_OCCURRENCES) {
+      throw new ValidationError(`Une série compte au plus ${MAX_OCCURRENCES} occurrences`);
+    }
+    const now = this.now();
+    if (occurrences.some((s) => s.start < now)) {
+      throw new ValidationError('Une occurrence est dans le passé');
+    }
+
+    return this.withRoomLock(roomId, async () => {
+      const existing = await this.bookings.findByRoom(roomId);
+      if (occurrences.some((s) => existing.some((b) => overlaps(b, s)))) {
+        throw new ConflictError('Une occurrence chevauche une réservation existante');
+      }
+
+      const created: Booking[] = occurrences.map((s) => ({
+        id: randomUUID(),
+        roomId,
+        ownerId: user.id,
+        subject,
+        start: s.start,
+        end: s.end,
+      }));
+      for (const booking of created) await this.bookings.save(booking);
+      return created;
     });
   }
 

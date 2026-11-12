@@ -1,6 +1,9 @@
 import type { Slot } from './types.js';
 
-const SEMAINE_MS = 7 * 24 * 60 * 60 * 1000;
+export const SEMAINE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Borne d'une série récurrente : au plus six mois de créneaux hebdomadaires. */
+export const MAX_OCCURRENCES = 26;
 
 /**
  * Occurrences hebdomadaires d'un créneau, jusqu'au jour limite inclus.
