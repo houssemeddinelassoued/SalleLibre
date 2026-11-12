@@ -26,3 +26,8 @@ export interface Booking extends Slot {
   readonly ownerId: string;
   readonly subject: string;
 }
+
+/** Demande en attente d'un créneau occupé ; promue en réservation quand il se libère. */
+export interface WaitlistEntry extends Booking {
+  readonly createdAt: Date;
+}
