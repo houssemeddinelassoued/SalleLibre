@@ -17,8 +17,11 @@ export function findAvailableRooms(
   slot: Slot,
   minCapacity: number,
 ): Room[] {
+  // Une seule passe sur les réservations : ensemble des salles occupées sur le créneau.
+  const occupees = new Set(
+    bookings.filter((b) => overlaps(b, slot)).map((b) => b.roomId),
+  );
   return rooms
-    .filter((room) => room.capacity >= minCapacity)
-    .filter((room) => !bookings.some((b) => b.roomId === room.id && overlaps(b, slot)))
+    .filter((room) => room.capacity >= minCapacity && !occupees.has(room.id))
     .sort((a, b) => a.capacity - b.capacity || a.name.localeCompare(b.name));
 }
