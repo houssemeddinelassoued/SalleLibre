@@ -1,7 +1,7 @@
 # PLAN · API SalleLibre (TP 2)
 
 API REST fictive de réservation de salles. Persistance **en mémoire** (pas de base de données).
-Statut : plan validé, aucune implémentation hors `src/domain/`.
+Statut : implémenté (auth, salles, réservations, récurrence). Feature en cours : liste d'attente (voir plus bas).
 
 ## Arborescence
 
@@ -60,3 +60,11 @@ Toutes héritent de `AppError { status, message }`. Jamais d'`Error` générique
 - Dépendances autorisées : `express`, `jsonwebtoken`, `zod`, `supertest`, `swagger-ui-express`, `yaml` (+ types). Toute autre : accord préalable.
 - Mots de passe hachés avec `node:crypto` (scrypt), sans bcrypt.
 - Dossier `http/` regroupant routes, middlewares et schémas.
+
+## Feature · Liste d'attente (décisions : `src/tests/CASES.md`)
+
+- Domaine : `WaitlistEntry` (créneau + `id`, `roomId`, `ownerId`, `subject`, `createdAt`) et `selectPromotions` (fonction pure, FIFO, gloutonne) dans `domain/waitlist.ts`.
+- Repository : `WaitlistRepository` : `findByRoom(roomId)` (ordre d'insertion), `findByOwner`, `findById`, `save`, `delete`.
+- Service : `BookingService` reçoit un 4ᵉ paramètre optionnel `waitlist?`. `joinWaitlist`, `leaveWaitlist`, `listMyWaitlist`. `cancel` passe sous le verrou de salle et promeut les entrées ; sans repository d'attente, son comportement est inchangé.
+- HTTP : `POST /api/waitlist`, `GET /api/waitlist/mine`, `DELETE /api/waitlist/{id}`, documentées dans `openapi.yaml`.
+- Lots : 1 domaine, 2 stockage, 3a inscription/retrait/liste, 3b promotion à l'annulation, 4 HTTP + OpenAPI.
